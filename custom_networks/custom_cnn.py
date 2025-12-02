@@ -53,23 +53,77 @@ from stable_baselines3.common import torch_layers
 # 保存原始的
 original_nature_cnn = torch_layers.NatureCNN
 
-# 创建修改版
+
 class CustomCNN(original_nature_cnn):
     def __init__(self, observation_space, features_dim=512):
         super().__init__(observation_space, features_dim)
-        # 在这里修改网络结构
+
+        n_channels = observation_space.shape[0]
+
         self.cnn = nn.Sequential(
-            nn.Conv2d(observation_space.shape[0], 32, kernel_size=8, stride=4),
+            # Layer 1: 32通道，分成4组
+            nn.Conv2d(n_channels, 32, kernel_size=8, stride=4),
+            nn.GroupNorm(4, 32),  # 32/4=8，每组8个通道
             nn.ReLU(),
+
+            # Layer 2: 64通道，分成8组
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.GroupNorm(8, 64),  # 64/8=8，每组8个通道
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1),  # 修改这里
+
+            # Layer 3: 64通道，分成8组
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.GroupNorm(8, 64),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, stride=1),  # 添加一层
+
+            # Layer 4: 可选的额外层
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.GroupNorm(8, 64),
             nn.ReLU(),
+
             nn.Flatten(),
         )
 
+        # 计算维度
+        with th.no_grad():
+            n_flatten = self.cnn(
+                th.as_tensor(observation_space.sample()[None]).float()
+            ).shape[1]
+
+        # 线性层也用LayerNorm
+        self.linear = nn.Sequential(
+            nn.Linear(n_flatten, features_dim),
+            nn.LayerNorm(features_dim),  # 稳定
+            nn.ReLU(),
+        )
+
+# 临时替换
+torch_layers.NatureCNN = CustomCNN
+
+# 创建修改版
+class CustomCNN1(original_nature_cnn):
+    def __init__(self, observation_space, features_dim=512):
+        super().__init__(observation_space, features_dim)
+
+        n_channels = observation_space.shape[0]
+
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_channels, 32, kernel_size=8, stride=4),
+            nn.GroupNorm(4, 32),  # GroupNorm，不依赖batch
+            nn.ReLU(),
+
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.GroupNorm(8, 64),
+            nn.ReLU(),
+
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.GroupNorm(8, 64),
+            nn.ReLU(),
+
+            nn.Flatten(),
+        )
+
+        # 先用原版，稳定后再改
         with th.no_grad():
             n_flatten = self.cnn(
                 th.as_tensor(observation_space.sample()[None]).float()
@@ -77,12 +131,9 @@ class CustomCNN(original_nature_cnn):
 
         self.linear = nn.Sequential(
             nn.Linear(n_flatten, features_dim),
-            nn.ReLU(),
-            nn.Dropout(0.1)  # 添加dropout
+            nn.ReLU()
         )
 
-# 临时替换
-torch_layers.NatureCNN = CustomCNN
 
 
 
