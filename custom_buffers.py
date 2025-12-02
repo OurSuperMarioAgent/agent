@@ -2,13 +2,41 @@ import torch
 import numpy as np
 from stable_baselines3.common.buffers import RolloutBuffer
 from typing import Optional
+# 开始训练
+#     ↓
+# 收集n步经验
+#     ↓  ┌───────────────┐
+# 存储到缓冲区 │ 状态、动作、奖励 │
+#     ↓  └───────────────┘
+# 计算回报和优势值
+#     ↓  ┌─────────────────────────┐
+# 采样批次    │ GAE(λ): R = r + γV(s')│
+#     ↓  └─────────────────────────┘
+# 策略更新
+#     ↓
+# 清空缓冲区
+#     ↓
+# 重复...
 
+
+# 原版PPO的缓冲区：
+# 1. 随机均匀采样 → 可能采样到"不重要"的transition
+# 2. 单步TD(λ)回报 → 可能短视
+# 3. 优势值可能不稳定 → 影响策略梯度
 
 class CustomRolloutBuffer(RolloutBuffer):
     """
     自定义经验回放缓冲区
     添加优势标准化和优先级采样
     """
+    # 1. 优势标准化（Advantage Normalization）
+    #    优势值 = (优势 - 均值) / (标准差 + 1e-8)
+    #    → 稳定训练，防止梯度爆炸
+
+    # 2. 优先级采样（Priority Sampling）
+    #    基于|优势值|的大小进行采样
+    #    → 更多地采样"重要"的transition
+    #    → 提高样本效率
 
     def __init__(self, *args, priority_alpha=0.6, **kwargs):
         super().__init__(*args, **kwargs)
@@ -63,6 +91,10 @@ class CustomRolloutBuffer(RolloutBuffer):
 
 class MultiStepRolloutBuffer(CustomRolloutBuffer):
     """多步回报缓冲区"""
+    # 多步回报（n-step returns）
+    # 原版：使用GAE(λ)，结合TD(0)和MC
+    # 多步：直接使用n步累积回报
+    # → 更好地平衡偏差和方差
 
     def __init__(self, *args, n_steps=5, **kwargs):
         super().__init__(*args, **kwargs)

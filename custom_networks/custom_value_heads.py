@@ -31,3 +31,21 @@ class CustomValueHeadPolicy(ActorCriticCnnPolicy):
         # 替换价值网络
         latent_dim_vf = self.mlp_extractor.latent_dim_vf
         self.value_net = CustomValueHead(latent_dim_vf)
+
+
+class RobustValueHead(nn.Module):
+    def __init__(self, input_dim, hidden_dim=256):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),  # 保持，有助于稳定
+            nn.ReLU(),  # 改为ReLU
+
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, x):
+        return self.net(x)

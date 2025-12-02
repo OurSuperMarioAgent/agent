@@ -1,11 +1,11 @@
-n_steps = 2048 # number of steps to run per environment per update
+n_steps = 2048 # number of steps to run per environment per update //2048
 batch_size = 512 # batch size for each gradient update
 n_episodes = 4 # number of episodes to collect per update
 gamma = 0.95 # discount factor
 learning_rate = 3e-4 # learning rate
 ent_coef = 0.1 # exploration coefficient
 clip_kl = 0.08 # target KL divergence （超过0.1的KL散度不可接受）
-n_pipe = 8 # number of parallel environments
+n_pipe = 1 # number of parallel environments //8
 evaluate_frequency = 1e4 # evaluation frequency
 n_frame_stacks = 4 # number of frames to stack
 n_frame_skip = 4 # number of frames to skip

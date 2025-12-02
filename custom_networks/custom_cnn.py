@@ -28,54 +28,44 @@ class MarioCNN(BaseFeaturesExtractor):
 
 
 class CustomCNN(BaseFeaturesExtractor):
-    """修复版自定义CNN - 处理通道顺序问题"""
-
     def __init__(self, observation_space, features_dim=512):
         super().__init__(observation_space, features_dim)
 
-        # 输入形状应该是 [batch_size, 4, 84, 84] (channels_first)
+        # 输入: [batch_size, 4, 84, 84]
         self.cnn = nn.Sequential(
-            nn.Conv2d(4, 32, kernel_size=8, stride=4, padding=2),
-            nn.BatchNorm2d(32),
-            nn.LeakyReLU(0.1),
-            nn.Dropout2d(0.1),
+            # 第一层：保持和原版相似
+            nn.Conv2d(4, 32, kernel_size=8, stride=4),
+            nn.ReLU(),
 
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.1),
-            nn.Dropout2d(0.1),
+            # 第二层：适度加深
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
 
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.1),
+            # 第三层：增加通道但不增加复杂度
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU(),
 
-            nn.AdaptiveAvgPool2d((6, 6)),
+            # 第四层：新增一层但保持简单
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU(),
+
             nn.Flatten(),
         )
 
-        # 修复：正确计算特征维度
+        # 计算展平后的维度
         with torch.no_grad():
-            # 确保输入形状正确 [batch_size, channels, height, width]
-            n_channels = observation_space.shape[0]  # 应该是4（帧堆叠）
+            n_channels = observation_space.shape[0]
             sample_input = torch.zeros(1, n_channels, *observation_space.shape[1:3])
             n_flatten = self.cnn(sample_input).shape[1]
 
-        self.linear = nn.Sequential(
-            nn.Linear(n_flatten, features_dim),
-            nn.LeakyReLU(0.1),
-            nn.Dropout(0.2)
-        )
+        # 线性层：保持简单
+        self.linear = nn.Linear(n_flatten, features_dim)
 
     def forward(self, observations):
-        # 确保输入形状正确
-        # observations 应该是 [batch_size, channels, height, width]
-        # 如果不是，需要转置
-        if observations.shape[-1] == 4:  # 如果通道在最后
-            # 从 [batch_size, height, width, channels] 转置为 [batch_size, channels, height, width]
+        # 确保通道顺序正确
+        if observations.shape[-1] == 4:  # channels last
             observations = observations.permute(0, 3, 1, 2)
-
-        features = self.cnn(observations)
-        return self.linear(features)
+        return self.linear(self.cnn(observations))
 
 
 class RobustCustomCNN(BaseFeaturesExtractor):
@@ -145,36 +135,3 @@ class RobustCustomCNN(BaseFeaturesExtractor):
 
         return self.linear(self.cnn(observations))
 
-
-class SimpleCompatibleCNN(BaseFeaturesExtractor):
-    """简单兼容的CNN，直接使用NatureCNN结构"""
-
-    def __init__(self, observation_space, features_dim=512):
-        super().__init__(observation_space, features_dim)
-
-        # 使用与NatureCNN相同的结构确保兼容性
-        self.cnn = nn.Sequential(
-            nn.Conv2d(4, 32, kernel_size=8, stride=4, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-
-        # 计算特征维度（使用标准84x84输入）
-        with torch.no_grad():
-            sample_input = torch.zeros(1, 4, 84, 84)
-            n_flatten = self.cnn(sample_input).shape[1]
-
-        self.linear = nn.Sequential(
-            nn.Linear(n_flatten, features_dim),
-            nn.ReLU(),
-        )
-
-    def forward(self, observations):
-        # 处理通道顺序
-        if observations.shape[-1] == 4:  # channels_last
-            observations = observations.permute(0, 3, 1, 2)
-        return self.linear(self.cnn(observations))

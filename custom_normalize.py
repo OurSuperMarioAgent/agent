@@ -10,6 +10,10 @@ class CustomVecNormalize(VecNormalize):
     自定义标准化方法 - 修复版本
     兼容新版本的Stable-Baselines3
     """
+    # 1. 观察标准化（像素、位置等）
+    # 2. 奖励标准化（统一奖励尺度）
+    # 3. 添加额外统计（最小值、最大值）
+    # 4. 非线性变换（tanh处理奖励）
 
     def __init__(self, venv, clip_obs=10.0, clip_reward=10.0, gamma=0.99,
                  epsilon=1e-8, norm_obs=True, norm_reward=True,

@@ -1,10 +1,13 @@
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from stable_baselines3 import PPO
+from stable_baselines3.common.torch_layers import NatureCNN
+
 from env_preprocess import create_env
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 from super_parameters import *
 from stable_baselines3.common.callbacks import EvalCallback
 import os
+import shutil
 # 从networks模块导入所有自定义组件
 from custom_networks import (
     CustomCNN,
@@ -21,6 +24,7 @@ from custom_rewards import CustomRewardWrapper
 
 
 def train(save_path: str, total_timesteps: int = 1e7):
+
     # 使用 DummyVecEnv 替代 SubprocVecEnv 避免多进程问题
     vec_env = DummyVecEnv([create_env for _ in range(n_pipe)])
     vec_env = VecFrameStack(vec_env, n_stack=n_frame_stacks)
