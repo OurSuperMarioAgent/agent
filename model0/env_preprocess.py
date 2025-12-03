@@ -11,5 +11,4 @@ def create_env():
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
     env = GrayScaleObservation(env, keep_dim=True)
     env = ResizeObservation(env, resize_observation_shape)
-    #env = SkipFrameWrapper(env, skip=n_frame_skip)
     return env
