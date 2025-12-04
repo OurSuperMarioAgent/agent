@@ -2,7 +2,7 @@ from .custom_cnn import CustomCNN, MarioCNN
 from .custom_mlp import CustomMLPExtractor
 from .custom_optimizers import CustomOptimizer, CosineAnnealingSchedule
 from .custom_distributions import CustomDistribution
-from .custom_activations import CustomActivation
+from .custom_res_block import SimpleResBlock
 from .custom_value_heads import CustomValueHead, CustomValueHeadPolicy
 
 __all__ = [
@@ -12,7 +12,7 @@ __all__ = [
     "CustomOptimizer",
     "CosineAnnealingSchedule",
     "CustomDistribution",
-    "CustomActivation",
+    "SimpleResBlock",
     "CustomValueHead",
     "CustomValueHeadPolicy",
 ]
