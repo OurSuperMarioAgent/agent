@@ -73,7 +73,9 @@ def train(save_path: str, total_timesteps: int = 1e5, load_model: str = None):
                     n_epochs=n_episodes,
                     gamma=gamma,
                     learning_rate=learning_rate,
-                    ent_coef=ent_coef)
+                    ent_coef=ent_coef,
+                    clip_range=0.1
+                    )
         reset_timesteps = True
 
     # 训练

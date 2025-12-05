@@ -44,4 +44,4 @@ def test(
     env.close()
 
 if __name__ == "__main__":
-    test(model_path="models/reward_model_2.zip")
+    test(model_path="models/reward_model_2_11.zip")
