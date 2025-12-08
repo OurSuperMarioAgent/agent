@@ -20,7 +20,6 @@ def create_env(seed: int = None, eval_mode: bool = False):
     env = gym_super_mario_bros.make('SuperMarioBros-v2')
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
     env = GrayScaleObservation(env, keep_dim=True)
-    env = CropObservation(env, crop_box)
     env = ResizeObservation(env, resize_observation_shape)
     env = SkipFrameWrapper(env, n_frame_skip)
     
@@ -43,4 +42,5 @@ def make_env(rank: int, seed: int = 42, eval_mode: bool = False):
         env_seed = seed + rank if not eval_mode else None
         env = create_env(seed=env_seed, eval_mode=eval_mode)
         return env
+
     return _init
