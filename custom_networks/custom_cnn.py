@@ -3,6 +3,8 @@ import torch as th
 from gymnasium import spaces
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, is_image_space
 from stable_baselines3.common.torch_layers import NatureCNN
+
+from .custom_activation import ParamMish
 from .custom_res_block import SimpleResBlock
 
 
@@ -65,25 +67,24 @@ class CustomCNN(original_nature_cnn):
             # Layer 1: 32通道，分成4组
             nn.Conv2d(n_channels, 32, kernel_size=8, stride=4),
             nn.GroupNorm(4, 32),  # 32/4=8，每组8个通道
-            nn.ReLU(),
+            ParamMish(),
 
             # Layer 2: 64通道，分成8组
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.GroupNorm(8, 64),  # 64/8=8，每组8个通道
-            nn.ReLU(),
+            ParamMish(),
 
             # Layer 3: 64通道，分成8组
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
             nn.GroupNorm(8, 64),
-            nn.ReLU(),
+            ParamMish(),
 
             SimpleResBlock(64),
-            #SimpleResBlock(64),
 
             # Layer 4: 可选的额外层
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.GroupNorm(8, 64),
-            nn.ReLU(),
+            ParamMish(),
 
             nn.Flatten(),
         )
@@ -98,5 +99,5 @@ class CustomCNN(original_nature_cnn):
         self.linear = nn.Sequential(
             nn.Linear(n_flatten, features_dim),
             nn.LayerNorm(features_dim),  # 稳定
-            nn.ReLU(),
+            ParamMish(),
         )

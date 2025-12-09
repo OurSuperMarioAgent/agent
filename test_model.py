@@ -19,7 +19,7 @@ def test(
     env = DummyVecEnv([create_env])
     env = VecFrameStack(env, n_stack=n_frame_stacks)
 
-    #torch_layers.NatureCNN = CustomCNN
+    torch_layers.NatureCNN = CustomCNN
     policy_kwargs = dict(
         features_extractor_class=NatureCNN,
         features_extractor_kwargs=dict(features_dim=512),
@@ -44,4 +44,4 @@ def test(
     env.close()
 
 if __name__ == "__main__":
-    test(model_path="models/reward_model_2_11.zip")
+    test(model_path="models/CNN_optim_model_1.zip")

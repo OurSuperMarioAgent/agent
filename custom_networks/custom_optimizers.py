@@ -13,7 +13,17 @@ class CustomOptimizer(AdamW):
     def step(self, closure=None):
         # 梯度裁剪，防止梯度爆炸
         if self.max_grad_norm > 0:
-            torch.nn.utils.clip_grad_norm_(self.parameters(), self.max_grad_norm)
+            # 收集所有参数
+            parameters = []
+            for group in self.param_groups:
+                for p in group['params']:
+                    if p.grad is not None:
+                        parameters.append(p)
+
+            # 裁剪梯度
+            if parameters:
+                torch.nn.utils.clip_grad_norm_(parameters, self.max_grad_norm)
+
         super().step(closure)
 
 

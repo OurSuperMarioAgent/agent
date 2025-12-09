@@ -17,10 +17,10 @@ from custom_networks import (
     CustomOptimizer,
     CosineAnnealingSchedule,
     SimpleResBlock,
-    CustomValueHeadPolicy
+    CustomValueHeadPolicy, CustomACCNNPolicy
 )
 from custom_buffers import CustomRolloutBuffer
-from custom_normalize import CustomVecNormalize, SimpleVecNormalize
+from custom_normalize import SimpleVecNormalize
 from custom_callbacks import CustomCallback
 from custom_rewards import CustomRewardWrapper
 
@@ -33,12 +33,58 @@ def train(save_path: str, total_timesteps: int = 1e5, load_model: str = None):
     vec_env = DummyVecEnv([lambda: create_env(is_training=True, use_monitor=False)
                            for _ in range(n_pipe)])
     vec_env = VecFrameStack(vec_env, n_stack=n_frame_stacks)
+    vec_env = SimpleVecNormalize(
+        vec_env,
+        norm_obs=True,  # 标准化观测
+        norm_reward=True,  # 标准化奖励
+        clip_obs=10.0,  # 裁剪观测
+        clip_reward=10.0,  # 裁剪奖励
+        gamma=0.99  # 奖励折扣
+    )
 
     def make_eval_env():
         return create_env(is_training=False, use_monitor=True)
 
     eval_env = DummyVecEnv([make_eval_env])
     eval_env = VecFrameStack(eval_env, n_stack=n_frame_stacks)
+    eval_env = SimpleVecNormalize(
+        eval_env,
+        norm_obs=True,
+        norm_reward=False,  # 评估时不标准化奖励（为了看到真实奖励）
+        clip_obs=10.0,
+        clip_reward=10.0,
+        gamma=0.99
+    )
+
+    def create_custom_optimizer(params, lr):
+        return CustomOptimizer(
+            params,
+            lr=lr,
+            max_grad_norm=0.8,  # 适中的梯度裁剪
+            weight_decay=0.01,  # AdamW的权重衰减
+            betas=(0.9, 0.999),  # Adam的动量参数
+            eps=1e-8
+        )
+
+    # 改进的学习率调度（余弦退火）
+    def lr_schedule(p):
+        # p 是剩余进度 (从1到0)
+        # 使用你的CosineAnnealingSchedule
+        lr_scheduler = CosineAnnealingSchedule(
+            initial_lr=3e-4,
+            min_lr=1e-6
+        )
+        return lr_scheduler(p)
+
+    # 改进的clip_range调度
+    def clip_schedule(p):
+        # 初期保守，中期适中，后期严格
+        if p > 0.7:  # 前30%训练
+            return 0.15
+        elif p > 0.3:  # 中间40%
+            return 0.12
+        else:  # 最后30%
+            return 0.08
 
     call_back = EvalCallback(
         eval_env,
@@ -58,23 +104,38 @@ def train(save_path: str, total_timesteps: int = 1e5, load_model: str = None):
         model.set_env(vec_env)
         reset_timesteps = False
         print(f"已训练步数: {model.num_timesteps}")
+
+        model.policy.optimizer = create_custom_optimizer(
+            model.policy.parameters(),
+            lr=model.policy.optimizer.param_groups[0]['lr']
+        )
+
     else:
         print("创建新模型")
+
+        torch_layers.NatureCNN = CustomCNN
         policy_kwargs = dict(
             features_extractor_class=NatureCNN,
             features_extractor_kwargs=dict(features_dim=512),
+            optimizer_class=CustomOptimizer,
+            optimizer_kwargs={
+                "max_grad_norm": 0.8,
+                "weight_decay": 0.01,
+                "betas": (0.9, 0.999),
+                "eps": 1e-8
+            }
         )
 
-        model = PPO('CnnPolicy', vec_env, verbose=1,
+        model = PPO(CustomACCNNPolicy, vec_env, verbose=1,
                     tensorboard_log="logs/",
                     policy_kwargs=policy_kwargs,
                     n_steps=n_steps,
                     batch_size=batch_size,
                     n_epochs=n_episodes,
                     gamma=gamma,
-                    learning_rate=learning_rate,
+                    learning_rate=lr_schedule,
                     ent_coef=ent_coef,
-                    clip_range=0.1
+                    clip_range=clip_schedule,
                     )
         reset_timesteps = True
 
