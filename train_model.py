@@ -29,19 +29,21 @@ def train(save_path: str, total_timesteps: int = 1e5, load_model: str = None):
     log_dir = "logs"
     os.makedirs(log_dir, exist_ok=True)
 
-    # 创建环境
+    # 创建训练环境
     vec_env = DummyVecEnv([lambda: create_env(is_training=True, use_monitor=False)
                            for _ in range(n_pipe)])
     vec_env = VecFrameStack(vec_env, n_stack=n_frame_stacks)
     vec_env = SimpleVecNormalize(
         vec_env,
-        norm_obs=True,  # 标准化观测
-        norm_reward=True,  # 标准化奖励
-        clip_obs=10.0,  # 裁剪观测
-        clip_reward=10.0,  # 裁剪奖励
-        gamma=0.99  # 奖励折扣
+        norm_obs=False,  # 图像不应该标准化
+        norm_reward=True,
+        clip_obs=10.0,
+        clip_reward=10.0,
+        gamma=0.99
     )
+    vec_env = VecTransposeImage(vec_env)  # 转换为CHW格式
 
+    # 创建评估环境（必须和训练环境完全一样的包装）
     def make_eval_env():
         return create_env(is_training=False, use_monitor=True)
 
@@ -49,12 +51,13 @@ def train(save_path: str, total_timesteps: int = 1e5, load_model: str = None):
     eval_env = VecFrameStack(eval_env, n_stack=n_frame_stacks)
     eval_env = SimpleVecNormalize(
         eval_env,
-        norm_obs=True,
-        norm_reward=False,  # 评估时不标准化奖励（为了看到真实奖励）
+        norm_obs=False,  # 和训练环境一致
+        norm_reward=False,  # 评估时不标准化奖励
         clip_obs=10.0,
         clip_reward=10.0,
         gamma=0.99
     )
+    eval_env = VecTransposeImage(eval_env)  # 和训练环境一致
 
     def create_custom_optimizer(params, lr):
         return CustomOptimizer(
@@ -149,5 +152,6 @@ def train(save_path: str, total_timesteps: int = 1e5, load_model: str = None):
 
     vec_env.close()
     eval_env.close()
+
 
     print(f"训练完成，模型保存到: {save_path}")
