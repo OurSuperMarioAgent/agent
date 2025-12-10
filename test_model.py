@@ -44,4 +44,4 @@ def test(
     env.close()
 
 if __name__ == "__main__":
-    test(model_path="models/CNN_optim_model_1.zip")
+    test(model_path="models/CNN_MLP_policy_optim_normal_model_1.zip")

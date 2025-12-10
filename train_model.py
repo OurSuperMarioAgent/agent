@@ -4,7 +4,7 @@ from stable_baselines3.common import torch_layers
 from stable_baselines3.common.torch_layers import NatureCNN
 
 from env_preprocess import create_env
-from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecTransposeImage
 from super_parameters import *
 from stable_baselines3.common.callbacks import EvalCallback
 import os
@@ -152,6 +152,5 @@ def train(save_path: str, total_timesteps: int = 1e5, load_model: str = None):
 
     vec_env.close()
     eval_env.close()
-
 
     print(f"训练完成，模型保存到: {save_path}")
